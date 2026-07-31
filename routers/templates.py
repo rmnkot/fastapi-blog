@@ -7,11 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-import models
 from async_db import get_async_db_session
+from models import PostModel, UserModel
 from schemas import (
-    PostResponse,
-    UserResponse,
+    PostResponseSchema,
+    UserPublicSchema,
 )
 
 templates = Jinja2Templates(directory="templates")
@@ -24,7 +24,9 @@ async def home(
     request: Request, session: Annotated[AsyncSession, Depends(get_async_db_session)]
 ):
     result = await session.execute(
-        select(models.Post).options(selectinload(models.Post.author))
+        select(PostModel)
+        .options(selectinload(PostModel.author))
+        .order_by(PostModel.date_posted.desc())
     )
     posts = result.scalars().all()
 
@@ -32,7 +34,7 @@ async def home(
         request,
         "home.html",
         {
-            "posts": [PostResponse.model_validate(post) for post in posts],
+            "posts": [PostResponseSchema.model_validate(post) for post in posts],
             "title": "Home",
         },
     )
@@ -45,9 +47,9 @@ async def post_page(
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ):
     result = await session.execute(
-        select(models.Post)
-        .options(selectinload(models.Post.author))
-        .where(models.Post.id == post_id)
+        select(PostModel)
+        .options(selectinload(PostModel.author))
+        .where(PostModel.id == post_id)
     )
     post = result.scalars().first()
 
@@ -60,19 +62,19 @@ async def post_page(
         request,
         "post.html",
         {
-            "post": PostResponse.model_validate(post),
+            "post": PostResponseSchema.model_validate(post),
             "title": textwrap.shorten(post.title, width=12, placeholder="..."),
         },
     )
 
 
-@router.get("/users/{user_id}/posts", name="user_posts_page")
+@router.get("/users/{user_id}/posts", include_in_schema=False, name="user_posts_page")
 async def user_posts_page(
     request: Request,
     user_id: int,
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ):
-    result = await session.execute(select(models.User).where(models.User.id == user_id))
+    result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = result.scalars().first()
     if not user:
         raise HTTPException(
@@ -80,9 +82,10 @@ async def user_posts_page(
         )
 
     result = await session.execute(
-        select(models.Post)
-        .options(selectinload(models.Post.author))
-        .where(models.Post.user_id == user_id)
+        select(PostModel)
+        .options(selectinload(PostModel.author))
+        .where(PostModel.user_id == user_id)
+        .order_by(PostModel.date_posted.desc())
     )
     posts = result.scalars().all()
 
@@ -90,8 +93,23 @@ async def user_posts_page(
         request,
         "user_posts.html",
         {
-            "user": UserResponse.model_validate(user),
-            "posts": [PostResponse.model_validate(post) for post in posts],
+            "user": UserPublicSchema.model_validate(user),
+            "posts": [PostResponseSchema.model_validate(post) for post in posts],
             "title": f"{user.username}'s posts",
         },
     )
+
+
+@router.get("/login", include_in_schema=False)
+async def login_page(request: Request):
+    return templates.TemplateResponse(request, "login.html", {"title": "Login"})
+
+
+@router.get("/register", include_in_schema=False)
+async def register_page(request: Request):
+    return templates.TemplateResponse(request, "register.html", {"title": "Register"})
+
+
+@router.get("/account", include_in_schema=False)
+async def account_page(request: Request):
+    return templates.TemplateResponse(request, "account.html", {"title": "Account"})

@@ -1,0 +1,11 @@
+{
+    "hooks": {
+        "PostToolUse": [
+            {
+                "type": "command",
+                "command": "./.github/hooks/ruff-format.sh",
+                "timeout": 30
+            }
+        ]
+    }
+}
