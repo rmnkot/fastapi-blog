@@ -15,7 +15,6 @@ class UserCreateSchema(UserBaseSchema):
 class UserUpdateSchema(BaseModel):
     username: str | None = Field(min_length=1, max_length=50, default=None)
     email: EmailStr | None = Field(max_length=120, default=None)
-    image_file: str | None = Field(min_length=1, max_length=200, default=None)
 
 
 class UserPublicSchema(BaseModel):

@@ -61,7 +61,7 @@ def verify_access_token(token: str) -> str | None:
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
-):
+) -> UserModel:
     user_id = verify_access_token(token)
     if user_id is None:
         raise HTTPException(
@@ -90,4 +90,4 @@ async def get_current_user(
     return user
 
 
-CurrentUser = Annotated[UserModel, Depends(get_current_user)]
+CurrentUserModel = Annotated[UserModel, Depends(get_current_user)]

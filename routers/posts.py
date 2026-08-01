@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from async_db import get_async_db_session
-from auth import CurrentUser
+from auth import CurrentUserModel
 from models import PostModel
 from schemas import (
     PostCreateSchema,
@@ -53,7 +53,7 @@ async def get_post(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_post(
     payload: PostCreateSchema,
-    current_user: CurrentUser,
+    current_user: CurrentUserModel,
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ) -> PostResponseSchema:
     new_post = PostModel(
@@ -73,7 +73,7 @@ async def create_post(
 async def update_post_full(
     post_id: int,
     post_data: PostCreateSchema,
-    current_user: CurrentUser,
+    current_user: CurrentUserModel,
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ) -> PostResponseSchema:
     result = await session.execute(
@@ -106,7 +106,7 @@ async def update_post_full(
 async def update_post_partial(
     post_id: int,
     post_data: PostUpdateSchema,
-    current_user: CurrentUser,
+    current_user: CurrentUserModel,
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ) -> PostResponseSchema:
     result = await session.execute(
@@ -139,7 +139,7 @@ async def update_post_partial(
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(
     post_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentUserModel,
     session: Annotated[AsyncSession, Depends(get_async_db_session)],
 ):
     result = await session.execute(
