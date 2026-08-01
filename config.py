@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
 
     max_upload_size_bytes: int = 5 * 1024 * 1024  # 5MB
+    post_per_page: int = 5
 
 
 # Loaded from .env

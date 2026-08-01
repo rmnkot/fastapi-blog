@@ -3,11 +3,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from async_db import get_async_db_session
+from config import settings
 from models import PostModel, UserModel
 from schemas import (
     PostResponseSchema,
@@ -23,12 +24,18 @@ router = APIRouter()
 async def home(
     request: Request, session: Annotated[AsyncSession, Depends(get_async_db_session)]
 ):
+    count_result = await session.execute(select(func.count()).select_from(PostModel))
+    total = count_result.scalar() or 0
+
     result = await session.execute(
         select(PostModel)
         .options(selectinload(PostModel.author))
         .order_by(PostModel.date_posted.desc())
+        .limit(settings.post_per_page)
     )
     posts = result.scalars().all()
+
+    has_more = len(posts) < total
 
     return templates.TemplateResponse(
         request,
@@ -36,6 +43,8 @@ async def home(
         {
             "posts": [PostResponseSchema.model_validate(post) for post in posts],
             "title": "Home",
+            "limit": settings.post_per_page,
+            "has_more": has_more,
         },
     )
 
@@ -81,13 +90,20 @@ async def user_posts_page(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
+    count_result = await session.execute(
+        select(func.count()).select_from(PostModel).where(PostModel.user_id == user_id)
+    )
+    total = count_result.scalar() or 0
+
     result = await session.execute(
         select(PostModel)
         .options(selectinload(PostModel.author))
         .where(PostModel.user_id == user_id)
         .order_by(PostModel.date_posted.desc())
+        .limit(settings.post_per_page)
     )
     posts = result.scalars().all()
+    has_more = len(posts) < total
 
     return templates.TemplateResponse(
         request,
@@ -96,6 +112,8 @@ async def user_posts_page(
             "user": UserPublicSchema.model_validate(user),
             "posts": [PostResponseSchema.model_validate(post) for post in posts],
             "title": f"{user.username}'s posts",
+            "limit": settings.post_per_page,
+            "has_more": has_more,
         },
     )
 

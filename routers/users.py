@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from PIL import UnidentifiedImageError
 from sqlalchemy import func, select
@@ -20,6 +20,7 @@ from config import settings
 from image_utils import delete_profile_image, process_profile_image
 from models import PostModel, UserModel
 from schemas import (
+    PaginatedPostResponseSchema,
     PostResponseSchema,
     TokenSchema,
     UserCreateSchema,
@@ -186,8 +187,11 @@ async def update_user(
 
 @router.get("/{user_id}/posts")
 async def get_user_posts(
-    user_id: int, session: Annotated[AsyncSession, Depends(get_async_db_session)]
-) -> list[PostResponseSchema]:
+    user_id: int,
+    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = settings.post_per_page,
+) -> PaginatedPostResponseSchema:
     result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = result.scalars().first()
 
@@ -196,15 +200,29 @@ async def get_user_posts(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
+    count_result = await session.execute(
+        select(func.count()).select_from(PostModel).where(PostModel.user_id == user_id)
+    )
+    total = count_result.scalar() or 0
+
     result = await session.execute(
         select(PostModel)
         .options(selectinload(PostModel.author))
         .where(PostModel.user_id == user_id)
         .order_by(PostModel.date_posted.desc())
+        .offset(skip)
+        .limit(limit)
     )
     posts = result.scalars().all()
+    has_more = skip + len(posts) < total
 
-    return [PostResponseSchema.model_validate(post) for post in posts]
+    return PaginatedPostResponseSchema(
+        posts=[PostResponseSchema.model_validate(post) for post in posts],
+        total=total,
+        skip=skip,
+        limit=limit,
+        has_more=has_more,
+    )
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
