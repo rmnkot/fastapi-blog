@@ -8,7 +8,7 @@ from sqlalchemy import delete, select, update
 from async_db import AsyncSessionLocal, engine
 from image_utils import PROFILE_PICS_DIR
 from main import app
-from models import PostModel, UserModel
+from models import PasswordResetTokenModel, PostModel, UserModel
 
 POPULATE_IMAGES_DIR = Path("populate_images")
 
@@ -243,6 +243,7 @@ async def clear_existing_data() -> None:
 
     # Clear database tables (order respects foreign keys)
     async with AsyncSessionLocal() as db:
+        await db.execute(delete(PasswordResetTokenModel))
         await db.execute(delete(PostModel))
         await db.execute(delete(UserModel))
         await db.commit()

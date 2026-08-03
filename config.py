@@ -15,6 +15,17 @@ class Settings(BaseSettings):
     max_upload_size_bytes: int = 5 * 1024 * 1024  # 5MB
     post_per_page: int = 5
 
+    reset_token_expire_minutes: int = 60
+
+    mail_server: str = "localhost"
+    mail_port: int = 587
+    mail_username: str = ""
+    mail_password: SecretStr = SecretStr("")
+    mail_from: str = "noreply@example.com"
+    mail_use_tls: bool = True
+
+    frontend_url: str = "http://localhost:8000"
+
 
 # Loaded from .env
 settings = Settings()  # type: ignore[call-arg]

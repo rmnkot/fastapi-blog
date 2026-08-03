@@ -1,11 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from async_db import get_async_db_session
+from async_db import Session
 from auth import CurrentUserModel
 from config import settings
 from models import PostModel
@@ -21,7 +20,7 @@ router = APIRouter()
 
 @router.get("")
 async def get_posts(
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = settings.post_per_page,
 ) -> PaginatedPostResponseSchema:
@@ -49,7 +48,8 @@ async def get_posts(
 
 @router.get("/{post_id}")
 async def get_post(
-    post_id: int, session: Annotated[AsyncSession, Depends(get_async_db_session)]
+    post_id: int,
+    session: Session,
 ) -> PostResponseSchema:
     result = await session.execute(
         select(PostModel)
@@ -70,7 +70,7 @@ async def get_post(
 async def create_post(
     payload: PostCreateSchema,
     current_user: CurrentUserModel,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ) -> PostResponseSchema:
     new_post = PostModel(
         title=payload.title,
@@ -90,7 +90,7 @@ async def update_post_full(
     post_id: int,
     post_data: PostCreateSchema,
     current_user: CurrentUserModel,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ) -> PostResponseSchema:
     result = await session.execute(
         select(PostModel)
@@ -123,7 +123,7 @@ async def update_post_partial(
     post_id: int,
     post_data: PostUpdateSchema,
     current_user: CurrentUserModel,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ) -> PostResponseSchema:
     result = await session.execute(
         select(PostModel)
@@ -156,7 +156,7 @@ async def update_post_partial(
 async def delete_post(
     post_id: int,
     current_user: CurrentUserModel,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ):
     result = await session.execute(
         select(PostModel)

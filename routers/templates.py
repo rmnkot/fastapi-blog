@@ -1,13 +1,11 @@
 import textwrap
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from async_db import get_async_db_session
+from async_db import Session
 from config import settings
 from models import PostModel, UserModel
 from schemas import (
@@ -22,7 +20,8 @@ router = APIRouter()
 @router.get("/", include_in_schema=False, name="home")
 @router.get("/posts", include_in_schema=False, name="posts")
 async def home(
-    request: Request, session: Annotated[AsyncSession, Depends(get_async_db_session)]
+    request: Request,
+    session: Session,
 ):
     count_result = await session.execute(select(func.count()).select_from(PostModel))
     total = count_result.scalar() or 0
@@ -53,7 +52,7 @@ async def home(
 async def post_page(
     request: Request,
     post_id: int,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ):
     result = await session.execute(
         select(PostModel)
@@ -81,7 +80,7 @@ async def post_page(
 async def user_posts_page(
     request: Request,
     user_id: int,
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ):
     result = await session.execute(select(UserModel).where(UserModel.id == user_id))
     user = result.scalars().first()
@@ -131,3 +130,20 @@ async def register_page(request: Request):
 @router.get("/account", include_in_schema=False)
 async def account_page(request: Request):
     return templates.TemplateResponse(request, "account.html", {"title": "Account"})
+
+
+@router.get("/forgot-password", include_in_schema=False)
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(
+        request, "forgot_password.html", {"title": "Forgot Password"}
+    )
+
+
+@router.get("/reset-password", include_in_schema=False)
+async def reset_password_page(request: Request):
+    response = templates.TemplateResponse(
+        request, "reset_password.html", {"title": "Reset Password"}
+    )
+    # set referrer header to no-referrer for security (token in url user came from)
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response

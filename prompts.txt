@@ -1,0 +1,5 @@
+Can you check the project files to identify rules/best backend practices like http codes (when and what), response/error messages, how authorization/authentication implemented, file upload, reset password process, anything significant to understand and memorize. Also check frontend part if you find something useful in this regard. My goal is to understand how system should work without concrete binding to certain libraries and tools. So in future I could implement all needed mechanisms, validations, security measures. My understanding is that I could later catch up on documentation about concrete implementations knowing solid base. 
+So, I, as a frontend developer, want to gain knowledge about building backend (and frontend if there is anything valuable) including all it's aspects (security, performance, rules etc.) based on this learning project.
+Create docs/best_practices.md (you can pick any suitable file name) file to keep it as a guidelines for referencing
+
+Check project for any weaknesses or flaws, or issues form the architectural and backend best practices stand point

@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -6,14 +8,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from async_db import get_async_db_session
+from async_db import Session
 from config import settings
 from models import UserModel
 
 password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/users/token")
 
 
 def hash_password(password: str) -> str:
@@ -22,6 +23,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password) -> bool:
     return password_hash.verify(plain_password, hashed_password)
+
+
+def generate_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -60,7 +69,7 @@ def verify_access_token(token: str) -> str | None:
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+    session: Session,
 ) -> UserModel:
     user_id = verify_access_token(token)
     if user_id is None:
