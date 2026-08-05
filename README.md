@@ -156,3 +156,119 @@ docs/            Project docs (status codes, architecture review)
 ## Acknowledgements
 
 Built as a learning project following the [Corey Schafer FastAPI tutorial](https://youtu.be/7AMjmCTumuo?si=ExB5Vx94oH4kdO7a), extended with JWT auth, password reset by email, profile pictures, and an async SQLAlchemy stack.
+
+## 🐳 Local Database Setup (PostgreSQL 18)
+
+This project uses Docker Compose to run a local, completely isolated instance of PostgreSQL 18. This setup runs natively on Apple Silicon (M1/M2/M3/M4/M5) and won't pollute your host operating system.
+
+### 🛠 Prerequisites
+* [Docker Desktop](https://docker.com) installed and actively running in your menu bar.
+* [DBeaver](https://dbeaver.io) or any other database GUI tool.
+
+### 🔑 Connection Credentials
+
+Values are read from the git-ignored `.env` file; `docker-compose.yml` falls back to the defaults below if a variable is unset. Override any of them in `.env`, then recreate the container with `docker compose up -d`.
+
+| Setting | Default | Variable (in `.env`) |
+| --- | --- | --- |
+| Host | `localhost` | – |
+| Port | `5432` | `POSTGRES_PORT` |
+| Database Name | `blog_db` | `POSTGRES_DB` |
+| Username | `blog_user` | `POSTGRES_USER` |
+| Password | `password` | `POSTGRES_PASSWORD` |
+
+> 💡 `DATABASE_URL` in `.env` is derived automatically from the `POSTGRES_*` variables (pydantic-settings expands the `${VAR}` references), so there's only one place to change credentials.
+
+---
+
+### 🚀 Important Commands
+
+Always run these commands from the root directory of the project (where the `docker-compose.yml` file is located).
+
+#### 1. Daily Start
+To start the database container in the background (detached mode):
+```bash
+docker compose up -d
+```
+*Note: Since the configuration includes `restart: unless-stopped`, the container will automatically wake up whenever you open Docker Desktop in the morning. Currently commented*
+
+#### 2. Daily Stop (Recommended)
+You **do not** need to type any commands to stop your database daily. Simply **Quit Docker Desktop** from your macOS top menu bar. 
+* This safely freezes your container's current state.
+* It instantly releases 100% of CPU and RAM resources back to your Mac.
+
+#### 3. Maintenance Stop (Switching Projects)
+If you need to switch to another project using the same port (`5432`), completely clear the active containers, or update the `docker-compose.yml` file:
+```bash
+docker compose down
+```
+*This removes the temporary container sandbox, but **leaves all your tables and data completely untouched** inside the hidden volume.*
+
+#### 4. Complete Reset (Wipe All Data)
+If you want to completely erase the database, drop all tables, and start from a blank canvas:
+```bash
+docker compose down -v
+```
+⚠️ **Warning:** The `-v` (volumes) flag permanently deletes your local data volume. This action cannot be undone.
+
+#### 5. Check Database Status & Logs
+If you cannot connect via DBeaver, use these commands to debug:
+```bash
+# Check if the container is running (should show Status "Up")
+docker ps
+
+# View the real-time startup logs or error messages from PostgreSQL container
+docker logs postgres_dev
+```
+
+#### 6. Updating PostgreSQL 18 Image
+If a new minor patch or security update is released for PostgreSQL 18, you can pull the latest image and recreate your container without losing data by running:
+```bash
+docker compose pull
+docker compose up -d
+```
+
+#### 7. PostgreSQL CLI (psql)
+
+Open a shell inside the running container and connect as `blog_user` to the `blog_db` database:
+
+```bash
+docker exec -it postgres_dev psql -U blog_user -d blog_db
+```
+
+Useful psql commands once connected:
+
+```sql
+\l                  -- list all databases
+\dt                 -- list all tables in the current schema
+\d posts            -- show columns, types and constraints of the posts table
+\d+ posts           -- same, plus sizes, stats and indexes
+\du                 -- list database roles (users)
+\x                  -- toggle expanded output for wide rows
+\q                  -- exit psql
+```
+
+Some handy queries against the blog schema (tables come from `models.py`: `users`, `posts`, `password_reset_tokens`):
+
+```sql
+SELECT id, title, likes FROM posts;
+SELECT id, username, email FROM users;
+SELECT COUNT(*) FROM posts WHERE likes > 0;
+SELECT user_id, expires_at FROM password_reset_tokens;
+```
+
+#### 8. Alembic Migrations
+
+Alembic reads the app's `DATABASE_URL` from `.env` (see `alembic/env.py`), so it always targets whichever database the app is configured to use — SQLite or PostgreSQL.
+
+```bash
+uv run alembic revision --autogenerate -m "describe change"   # generate a migration from model changes
+uv run alembic upgrade head                                    # apply all pending migrations
+uv run alembic upgrade +1                                      # apply just the next migration
+uv run alembic downgrade -1                                    # roll back the latest migration
+uv run alembic downgrade base                                  # roll back everything
+uv run alembic current                                         # show which migration the DB is on (e.g. f98e5ac736e3 (head))
+uv run alembic history                                         # list all migrations, oldest → newest
+uv run alembic heads                                           # show the latest revision in each branch
+uv run alembic show <revision>                                 # print details of a specific migration
+```

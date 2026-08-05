@@ -149,9 +149,7 @@ async def reset_password(
             detail="Invalid or expired reset token",  # Hide actual info behind generic message
         )
 
-    # replace(tzinfo=UTC) is a workaround for SQLite to bring back timezone info to date string,
-    # not needed for PostgreSQL
-    if reset_token.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+    if reset_token.expires_at < datetime.now(UTC):
         await session.delete(reset_token)
         await session.commit()
         raise HTTPException(

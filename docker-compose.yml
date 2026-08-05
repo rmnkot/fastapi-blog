@@ -1,0 +1,33 @@
+# ============================================================
+#  Reusable local PostgreSQL template (Docker Compose)
+# ------------------------------------------------------------
+#  Credentials come from the git-ignored `.env` file; the
+#  `${VAR:-default}` syntax means it runs with zero config:
+#
+#      cp .env.example .env    # then override values if you like
+#      docker compose up -d
+#
+#  Edit a value in `.env`, recreate the container, and you're done.
+# ============================================================
+
+services:
+  postgres_dev:
+    image: postgres:18-alpine
+    container_name: postgres_dev
+    # restart: unless-stopped  # auto-start with Docker Desktop
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blog_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-blog_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"   # host:container — change host port to avoid clashes
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-blog_user} -d ${POSTGRES_DB:-blog_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data: 

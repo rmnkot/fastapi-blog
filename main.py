@@ -9,15 +9,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from async_db import Base, engine
+from async_db import engine
 from routers import posts, templates, users
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # Startup
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+    # Here goes code to execute on app start
     yield
     # Shutdown
     await engine.dispose()

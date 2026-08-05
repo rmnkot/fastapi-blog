@@ -8,6 +8,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
+    database_url: str
+
+    # PostgreSQL (Docker Compose) — same values used by docker-compose.yml;
+    # DATABASE_URL above is built from these via ${VAR} expansion in .env.
+    postgres_user: str = "blog_user"
+    postgres_password: SecretStr = SecretStr("password")
+    postgres_db: str = "blog_db"
+    postgres_port: int = 5432
+
     secret_key: SecretStr
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
