@@ -25,7 +25,6 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan, version="v1")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/media", StaticFiles(directory="media"), name="media")
 
 
 # ================= TEMPLATE ROUTS ===================
