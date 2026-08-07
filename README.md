@@ -27,6 +27,7 @@ This is a learning project originally based on the [Corey Schafer FastAPI tutori
 | Images | Pillow |
 | Templates | Jinja2 |
 | Config | `pydantic-settings` (`.env`) |
+| Testing | `pytest`, `anyio`, `moto` |
 | Tooling | `uv`, Ruff, Pyright |
 
 ## Requirements
@@ -87,6 +88,7 @@ All settings are read from `.env` (see `.env.example` and `config.py`):
 | `MAIL_FROM` | `noreply@example.com` | Sender address |
 | `MAIL_USE_TLS` | `true` | Use STARTTLS |
 | `FRONTEND_URL` | `http://localhost:8000` | Base URL used in reset links |
+| `TEST_POSTGRES_DB` | `test_blog_db` | Test DB name (created by Docker init script; see [Docker setup](#-local-database-setup-postgresql-18)) |
 
 > For local email testing without a real SMTP server, point `MAIL_SERVER`/`MAIL_PORT` at a tool like [MailHog](https://github.com/mailhog/MailHog) or an `aiosmtpd` instance.
 
@@ -144,14 +146,20 @@ templates/       Jinja2 templates (incl. email/ for reset mail)
 static/          CSS, JS, icons
 media/           Uploaded profile pictures
 docs/            Project docs (status codes, architecture review)
+tests/           Test suite (pytest + anyio; uses the test DB & moto S3)
+docker/
+  initdb/        Postgres init scripts (auto-create the test DB on first boot)
 ```
 
 > `main_sync.py` and `sync_db.py` are deprecated and kept for reference only — all active code is async.
 
 ## Development
 
+- **Run tests:** `uv run pytest` (or a single file, e.g. `uv run pytest tests/test_posts.py`)
 - **Lint:** `uv run ruff check .`
 - **Type check:** `uv run pyright` (`typeCheckingMode = "standard"`)
+
+> Tests run against PostgreSQL, so the [Docker database](#-local-database-setup-postgresql-18) must be up — the suite connects to `test_blog_db` (auto-created on first boot, see section 5 above) and mocks S3 with `moto`.
 
 ## Acknowledgements
 
@@ -211,7 +219,19 @@ docker compose down -v
 ```
 ⚠️ **Warning:** The `-v` (volumes) flag permanently deletes your local data volume. This action cannot be undone.
 
-#### 5. Check Database Status & Logs
+#### 5. Test Database (Auto-Created on First Boot)
+
+On a fresh (empty) data volume, `docker/initdb/01-create-test-db.sh` runs automatically on the container's first boot and creates the test database (`test_blog_db`, configurable via `TEST_POSTGRES_DB` in `.env`). The test suite (`tests/`) connects to it directly.
+
+⚠️ **The script must be executable.** The Postgres entrypoint executes scripts in `/docker-entrypoint-initdb.d` directly; if the file lacks the execute bit, the container fails to start with exit code `126` ("Permission denied"). The executable bit is **not tracked by git**, so after a fresh clone re-apply it before the first boot:
+
+```bash
+chmod +x docker/initdb/01-create-test-db.sh
+docker compose down -v   # init scripts only run on an empty volume
+docker compose up -d
+```
+
+#### 6. Check Database Status & Logs
 If you cannot connect via DBeaver, use these commands to debug:
 ```bash
 # Check if the container is running (should show Status "Up")
@@ -221,14 +241,14 @@ docker ps
 docker logs postgres_dev
 ```
 
-#### 6. Updating PostgreSQL 18 Image
+#### 7. Updating PostgreSQL 18 Image
 If a new minor patch or security update is released for PostgreSQL 18, you can pull the latest image and recreate your container without losing data by running:
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-#### 7. PostgreSQL CLI (psql)
+#### 8. PostgreSQL CLI (psql)
 
 Open a shell inside the running container and connect as `blog_user` to the `blog_db` database:
 
@@ -257,7 +277,7 @@ SELECT COUNT(*) FROM posts WHERE likes > 0;
 SELECT user_id, expires_at FROM password_reset_tokens;
 ```
 
-#### 8. Alembic Migrations
+#### 9. Alembic Migrations
 
 Alembic reads the app's `DATABASE_URL` from `.env` (see `alembic/env.py`), so it always targets whichever database the app is configured to use — SQLite or PostgreSQL.
 

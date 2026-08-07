@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     postgres_db: str = "blog_db"
     postgres_port: int = 5432
 
+    # Test database — same host/user/password as dev, different DB name.
+    # Created automatically by docker/initdb/01-create-test-db.sh on first boot;
+    # maps to the TEST_POSTGRES_DB env var (see docker-compose.yml).
+    test_postgres_db: str = "test_blog_db"
+
     @computed_field
     @property
     def database_url(self) -> str:
@@ -23,6 +28,16 @@ class Settings(BaseSettings):
             "postgresql+psycopg://"
             f"{self.postgres_user}:{self.postgres_password.get_secret_value()}"
             f"@localhost:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    @computed_field
+    @property
+    def test_database_url(self) -> str:
+        """Build the async SQLAlchemy URL for the test database."""
+        return (
+            "postgresql+psycopg://"
+            f"{self.postgres_user}:{self.postgres_password.get_secret_value()}"
+            f"@localhost:{self.postgres_port}/{self.test_postgres_db}"
         )
 
     secret_key: SecretStr

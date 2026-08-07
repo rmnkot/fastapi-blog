@@ -31,5 +31,7 @@ preview = true
 [dependency-groups]
 dev = [
     "boto3-stubs[s3]>=1.43.65",
+    "moto[s3]>=5.2.2",
+    "pytest>=9.1.1",
     "ruff>=0.16.1",
 ]

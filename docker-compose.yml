@@ -19,10 +19,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-blog_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       POSTGRES_DB: ${POSTGRES_DB:-blog_db}
+      # Test database, created automatically on first boot by
+      # docker/initdb/01-create-test-db.sh (see /docker-entrypoint-initdb.d).
+      TEST_POSTGRES_DB: ${TEST_POSTGRES_DB:-test_blog_db}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"   # host:container — change host port to avoid clashes
     volumes:
       - postgres_dev_data:/var/lib/postgresql
+      # Init scripts run once, on a fresh (empty) data volume — i.e. after
+      # `docker compose down -v`. They auto-create the test database.
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-blog_user} -d ${POSTGRES_DB:-blog_db}"]
       interval: 5s
