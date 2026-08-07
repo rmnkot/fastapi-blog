@@ -1,15 +1,16 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exception_handlers import (
     http_exception_handler,
     request_validation_exception_handler,
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from async_db import engine
+from async_db import Session, engine
 from routers import posts, templates, users
 
 
@@ -34,6 +35,37 @@ app.include_router(templates.router)
 # ================= API ROUTS ===================
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+
+    if "Referrer-Policy" not in response.headers:
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    if request.url.hostname not in ("localhost", "127.0.0.1"):
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains"
+        )
+
+    return response
+
+
+@app.get("/health")
+async def health_check(session: Session):
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database unavailable",
+        ) from exc
+    return {"status": "healthy"}
 
 
 # ================= ERROR HANDLING ===================

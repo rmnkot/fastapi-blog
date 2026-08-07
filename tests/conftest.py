@@ -3,9 +3,6 @@ import os
 # Redeclaring environment variables for configuration
 os.environ["POSTGRES_USER"] = "blog_user"
 os.environ["POSTGRES_PASSWORD"] = "password"
-os.environ["POSTGRES_DB"] = (
-    "test_blog_db"  # redirects the app's own engine to the test DB (defensive)
-)
 os.environ["POSTGRES_PORT"] = "5432"
 os.environ["TEST_POSTGRES_DB"] = "test_blog_db"  # drives settings.test_database_url
 os.environ["S3_BUCKET_NAME"] = "test-bucket"
